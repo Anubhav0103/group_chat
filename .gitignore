@@ -1,0 +1,22 @@
+# Node.js dependencies
+node_modules/
+package-lock.json
+
+# React build output
+client/build/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Coverage reports
+coverage/
+client/coverage/
+
+# System files
+.DS_Store
+Thumbs.db
