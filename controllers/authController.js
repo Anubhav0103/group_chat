@@ -29,9 +29,9 @@ const login = async (req, res) => {
     if (!match) {
       return res.status(401).json({ message: 'User not authorized' });
     }
-    // Create JWT with user id
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(200).json({ message: 'Login successful', token });
+    // Create JWT with user id and name
+    const token = jwt.sign({ id: user.id, name: user.name }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.status(200).json({ message: 'Login successful', token, user: { id: user.id, name: user.name } });
   });
 };
 
