@@ -8,4 +8,14 @@ const addMessage = (userId, message, callback) => {
   );
 };
 
-module.exports = { addMessage }; 
+const getAllMessages = (callback) => {
+  db.query(
+    `SELECT messages.id, messages.message, messages.created_at, users.name as senderName, users.id as userId
+     FROM messages
+     JOIN users ON messages.user_id = users.id
+     ORDER BY messages.created_at ASC`,
+    callback
+  );
+};
+
+module.exports = { addMessage, getAllMessages }; 

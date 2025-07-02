@@ -5,6 +5,20 @@ function GroupChat({ currentUser, currentUserId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
+  // Fetch all messages on mount
+  useEffect(() => {
+    fetch('http://localhost:5000/api/messages')
+      .then(res => res.json())
+      .then(data => {
+        setMessages(data.map(msg => ({
+          user: msg.senderName,
+          text: msg.message,
+          isNotification: false,
+          created_at: msg.created_at
+        })));
+      });
+  }, []);
+
   // Simulate another user joining after 5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
