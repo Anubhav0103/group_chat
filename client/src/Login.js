@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 
-function Login({ setCurrentUser }) {
+function Login({ setCurrentUser, setCurrentUserId }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const navigate = useNavigate();
 
@@ -21,7 +22,13 @@ function Login({ setCurrentUser }) {
       if (!response.ok) {
         alert(data.message);
       } else {
-        setCurrentUser(form.email);
+        // Decode JWT to get user id and name
+        const decoded = jwtDecode(data.token);
+        setCurrentUser(decoded.name);
+        setCurrentUserId(decoded.id);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', decoded.id);
+        localStorage.setItem('userName', decoded.name);
         navigate('/chat');
       }
     } catch (error) {

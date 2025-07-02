@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-function GroupChat({ currentUser }) {
+function GroupChat({ currentUser, currentUserId }) {
   const [users, setUsers] = useState([currentUser]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -16,10 +16,20 @@ function GroupChat({ currentUser }) {
     return () => clearTimeout(timer);
   }, [users]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (input.trim()) {
       setMessages((prev) => [...prev, { user: currentUser, text: input }]);
+      // Send message to backend
+      try {
+        await fetch('http://localhost:5000/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: Number(currentUserId), message: input }),
+        });
+      } catch (err) {
+        // Optionally handle error
+      }
       setInput("");
     }
   };
