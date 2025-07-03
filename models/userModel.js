@@ -12,4 +12,14 @@ const createUser = (name, email, phone, hashedPassword, callback) => {
   );
 };
 
-module.exports = { findUserByEmail, createUser }; 
+const getOnlineUsers = (callback) => {
+  db.query(
+    `SELECT DISTINCT users.id, users.name 
+     FROM users 
+     JOIN messages ON users.id = messages.user_id 
+     ORDER BY users.name`,
+    callback
+  );
+};
+
+module.exports = { findUserByEmail, createUser, getOnlineUsers }; 

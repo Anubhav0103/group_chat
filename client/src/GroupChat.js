@@ -1,34 +1,42 @@
 import React, { useState, useEffect } from "react";
 
 function GroupChat({ currentUser, currentUserId }) {
-  const [users, setUsers] = useState([currentUser]);
+  const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
-  // Fetch all messages on mount
+  // Fetch all messages and online users on mount and every 1 second
   useEffect(() => {
-    fetch('http://localhost:5000/api/messages')
-      .then(res => res.json())
-      .then(data => {
-        setMessages(data.map(msg => ({
-          user: msg.senderName,
-          text: msg.message,
-          isNotification: false,
-          created_at: msg.created_at
-        })));
-      });
-  }, []);
+    const fetchData = () => {
+      // Fetch messages
+      fetch('http://localhost:5000/api/messages')
+        .then(res => res.json())
+        .then(data => {
+          setMessages(data.map(msg => ({
+            user: msg.senderName,
+            text: msg.message,
+            isNotification: false,
+            created_at: msg.created_at
+          })));
+        });
 
-  // Simulate another user joining after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!users.includes("Test2")) {
-        setUsers((prev) => [...prev, "Test2"]);
-        setMessages((prev) => [...prev, { user: "", text: "Test2 joined the chat", isNotification: true }]);
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [users]);
+      // Fetch online users
+      fetch('http://localhost:5000/api/online-users')
+        .then(res => res.json())
+        .then(data => {
+          setUsers(data.map(user => user.name));
+        });
+    };
+
+    // Initial fetch
+    fetchData();
+
+    // Set up interval to fetch every 1 second
+    const interval = setInterval(fetchData, 1000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSend = async (e) => {
     e.preventDefault();
