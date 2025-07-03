@@ -5,19 +5,56 @@ function GroupChat({ currentUser, currentUserId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
+  // Load cached messages from localStorage on mount
+  useEffect(() => {
+    const cachedMessages = localStorage.getItem('chatMessages');
+    if (cachedMessages) {
+      setMessages(JSON.parse(cachedMessages));
+    }
+  }, []);
+
   // Fetch all messages and online users on mount and every 1 second
   useEffect(() => {
     const fetchData = () => {
-      // Fetch messages
-      fetch('http://localhost:5000/api/messages')
+      // Get last message timestamp for fetching only new messages
+      const cachedMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+      const lastMessageTime = cachedMessages.length > 0 ? cachedMessages[cachedMessages.length - 1].created_at : null;
+      const cachedIds = new Set(cachedMessages.map(msg => msg.id));
+
+      // Fetch messages (only new ones if we have cached messages)
+      const url = lastMessageTime 
+        ? `http://localhost:5000/api/messages?after=${lastMessageTime}`
+        : 'http://localhost:5000/api/messages';
+      
+      fetch(url)
         .then(res => res.json())
         .then(data => {
-          setMessages(data.map(msg => ({
-            user: msg.senderName,
-            text: msg.message,
-            isNotification: false,
-            created_at: msg.created_at
-          })));
+          if (data.length > 0) {
+            const newMessages = data
+              .filter(msg => !cachedIds.has(msg.id))
+              .map(msg => ({
+                id: msg.id,
+                user: msg.senderName,
+                text: msg.message,
+                isNotification: false,
+                created_at: msg.created_at
+              }));
+
+            // Combine cached and new messages, deduplicated
+            const allMessages = [...cachedMessages, ...newMessages];
+            // Keep only the last 10 unique messages
+            const uniqueMessages = [];
+            const seenIds = new Set();
+            for (let i = allMessages.length - 1; i >= 0 && uniqueMessages.length < 10; i--) {
+              if (!seenIds.has(allMessages[i].id)) {
+                uniqueMessages.unshift(allMessages[i]);
+                seenIds.add(allMessages[i].id);
+              }
+            }
+            // Update state and localStorage
+            setMessages(uniqueMessages);
+            localStorage.setItem('chatMessages', JSON.stringify(uniqueMessages));
+          }
         });
 
       // Fetch online users

@@ -1,4 +1,4 @@
-const { addMessage, getAllMessages } = require('../models/messageModel');
+const { addMessage, getAllMessages, getMessagesAfter } = require('../models/messageModel');
 
 const storeMessage = (req, res) => {
   const { userId, message } = req.body;
@@ -12,10 +12,21 @@ const storeMessage = (req, res) => {
 };
 
 const getAllMessagesController = (req, res) => {
-  getAllMessages((err, results) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    res.status(200).json(results);
-  });
+  const { after } = req.query;
+  
+  if (after) {
+    // Get messages after specific timestamp
+    getMessagesAfter(after, (err, results) => {
+      if (err) return res.status(500).json({ message: 'Server error' });
+      res.status(200).json(results);
+    });
+  } else {
+    // Get all messages
+    getAllMessages((err, results) => {
+      if (err) return res.status(500).json({ message: 'Server error' });
+      res.status(200).json(results);
+    });
+  }
 };
 
 module.exports = { storeMessage, getAllMessagesController }; 
