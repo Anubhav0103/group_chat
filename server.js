@@ -10,9 +10,11 @@ app.use(express.json());
 const authRoutes = require('./routes/authRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const userRoutes = require('./routes/userRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 app.use('/api', authRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', userRoutes);
+app.use('/api', groupRoutes);
 
 app.listen(5000, () => {
   console.log('Server running on port 5000');
