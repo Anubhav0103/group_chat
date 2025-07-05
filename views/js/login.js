@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'http://54.252.209.202:5000';
 
 // Login functionality
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
