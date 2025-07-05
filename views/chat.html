@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Chat</title>
+    <link rel="stylesheet" href="style/styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <h3>Groups</h3>
+            <div class="groups-list" id="groupsList">
+                <!-- Groups will be loaded here -->
+            </div>
+            <div class="create-group">
+                <form id="createGroupForm">
+                    <input type="text" id="groupName" placeholder="New group name" required>
+                    <button type="submit">Create Group</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-main">
+            <div class="chat-header" id="chatHeader">
+                <div class="header-content">
+                    <h2 id="currentGroupName">Select a group to start chatting</h2>
+                    <button id="deleteGroupBtn" class="delete-group-btn" style="display: none;">Delete Group</button>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="messagesContainer">
+                <!-- Messages will be loaded here -->
+            </div>
+            
+            <div class="chat-input">
+                <form id="messageForm">
+                    <input type="text" id="messageInput" placeholder="Type a message..." required>
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Group Management Panel -->
+        <div class="group-panel" id="groupPanel">
+            <h3>Group Members</h3>
+            <div class="members-list" id="membersList">
+                <!-- Members will be loaded here -->
+            </div>
+            <div class="invite-section" id="inviteSection" style="display: none;">
+                <form id="inviteForm">
+                    <input type="email" id="inviteEmail" placeholder="Invite user by email" required>
+                    <button type="submit">Invite</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/chat.js"></script>
+</body>
+</html> 
