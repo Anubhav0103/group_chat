@@ -8,4 +8,17 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306
 });
 
+// Add error handling
+db.connect((err) => {
+  if (err) {
+    console.error('Database connection failed:', err);
+  } else {
+    console.log('Database connected successfully');
+  }
+});
+
+db.on('error', (err) => {
+  console.error('Database error:', err);
+});
+
 module.exports = db; 

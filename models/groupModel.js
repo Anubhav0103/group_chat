@@ -64,4 +64,19 @@ const removeGroupMember = (groupId, userId, callback) => {
   );
 };
 
-module.exports = { createGroup, addGroupMember, getUserGroups, getGroupMembers, getUserRoleInGroup, promoteMemberToAdmin, removeGroupMember }; 
+const deleteGroup = (groupId, callback) => {
+  // First delete all messages in the group
+  db.query('DELETE FROM messages WHERE group_id = ?', [groupId], (err) => {
+    if (err) return callback(err);
+    
+    // Then delete all group members
+    db.query('DELETE FROM group_members WHERE group_id = ?', [groupId], (err2) => {
+      if (err2) return callback(err2);
+      
+      // Finally delete the group itself
+      db.query('DELETE FROM groups WHERE id = ?', [groupId], callback);
+    });
+  });
+};
+
+module.exports = { createGroup, addGroupMember, getUserGroups, getGroupMembers, getUserRoleInGroup, promoteMemberToAdmin, removeGroupMember, deleteGroup }; 
