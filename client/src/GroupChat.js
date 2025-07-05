@@ -11,7 +11,7 @@ function GroupChat({ currentUser, currentUserId, selectedGroup }) {
   useEffect(() => {
     if (!selectedGroup || !currentUserId) return;
     const fetchMembers = () => {
-      fetch(`http://localhost:5000/api/groups/members?groupId=${selectedGroup.id}`)
+      fetch(`http://54.252.209.202:5000/api/groups/members?groupId=${selectedGroup.id}`)
         .then(res => res.json())
         .then(data => {
           setGroupMembers(data);
@@ -46,8 +46,8 @@ function GroupChat({ currentUser, currentUserId, selectedGroup }) {
 
       // Fetch messages for the group
       const url = lastMessageTime 
-        ? `http://localhost:5000/api/messages?after=${lastMessageTime}&groupId=${selectedGroup.id}&userId=${currentUserId}`
-        : `http://localhost:5000/api/messages?groupId=${selectedGroup.id}&userId=${currentUserId}`;
+        ? `http://54.252.209.202:5000/api/messages?after=${lastMessageTime}&groupId=${selectedGroup.id}&userId=${currentUserId}`
+        : `http://54.252.209.202:5000/api/messages?groupId=${selectedGroup.id}&userId=${currentUserId}`;
       
       fetch(url)
         .then(res => res.json())
@@ -91,14 +91,14 @@ function GroupChat({ currentUser, currentUserId, selectedGroup }) {
     e.preventDefault();
     if (!inviteEmail.trim() || !selectedGroup) return;
     // Find user by email
-    const res = await fetch(`http://localhost:5000/api/users/by-email?email=${encodeURIComponent(inviteEmail)}`);
+    const res = await fetch(`http://54.252.209.202:5000/api/users/by-email?email=${encodeURIComponent(inviteEmail)}`);
     const user = await res.json();
     if (!user || !user.id) {
       alert('User not found');
       return;
     }
     // Add user to group (send requesterId)
-    await fetch('http://localhost:5000/api/groups/add-member', {
+    await fetch('http://54.252.209.202:5000/api/groups/add-member', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupId: selectedGroup.id, userId: user.id, requesterId: Number(currentUserId) })
@@ -109,17 +109,17 @@ function GroupChat({ currentUser, currentUserId, selectedGroup }) {
   // Promote member to admin (only for admins)
   const handlePromote = async (userId) => {
     if (!selectedGroup) return;
-    await fetch('http://localhost:5000/api/groups/promote-admin', {
+    await fetch('http://54.252.209.202:5000/api/groups/promote-admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupId: selectedGroup.id, userId, requesterId: Number(currentUserId) })
     });
   };
 
-  // Remove member from group (only for admins)
+  // Remove member to admin (only for admins)
   const handleRemove = async (userId) => {
     if (!selectedGroup) return;
-    await fetch('http://localhost:5000/api/groups/remove-member', {
+    await fetch('http://54.252.209.202:5000/api/groups/remove-member', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupId: selectedGroup.id, userId, requesterId: Number(currentUserId) })
@@ -132,7 +132,7 @@ function GroupChat({ currentUser, currentUserId, selectedGroup }) {
       setMessages((prev) => [...prev, { user: currentUser, text: input }]);
       // Send message to backend
       try {
-        await fetch('http://localhost:5000/api/messages', {
+        await fetch('http://54.252.209.202:5000/api/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: Number(currentUserId), message: input, groupId: selectedGroup.id }),
