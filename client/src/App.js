@@ -88,7 +88,7 @@ function App() {
   useEffect(() => {
     if (!currentUserId) return;
     const fetchGroups = () => {
-      fetch(`http://localhost:5000/api/groups/my?userId=${currentUserId}`)
+      fetch(`http://54.252.209.202:5000/api/groups/my?userId=${currentUserId}`)
         .then(res => res.json())
         .then(data => {
           setGroups(data);
@@ -107,7 +107,7 @@ function App() {
 
   // Create a new group
   const handleCreateGroup = (groupName) => {
-    fetch('http://localhost:5000/api/groups', {
+    fetch('http://54.252.209.202:5000/api/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: groupName, userId: Number(currentUserId) })
@@ -116,7 +116,7 @@ function App() {
       .then(data => {
         if (data.groupId) {
           // Refetch groups
-          fetch(`http://localhost:5000/api/groups/my?userId=${currentUserId}`)
+          fetch(`http://54.252.209.202:5000/api/groups/my?userId=${currentUserId}`)
             .then(res => res.json())
             .then(data => {
               setGroups(data);
