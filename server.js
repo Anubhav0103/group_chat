@@ -25,11 +25,13 @@ const messageRoutes = require('./routes/messageRoutes');
 const userRoutes = require('./routes/userRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 app.use('/api', authRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', userRoutes);
 app.use('/api', groupRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve the main pages
 app.get('/', (req, res) => {
@@ -89,6 +91,10 @@ const FileController = require('./controllers/fileController');
 setInterval(() => {
   FileController.cleanupExpiredFiles();
 }, 60 * 60 * 1000); // 1 hour
+
+// Initialize cron jobs for message archiving
+const CronService = require('./services/cronService');
+CronService.init();
 
 // Make io available to other modules
 app.set('io', io);
