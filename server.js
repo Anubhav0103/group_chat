@@ -2,7 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -22,7 +31,7 @@ app.use('/api', groupRoutes);
 
 // Serve the main pages
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'login.html'));
+  res.redirect('/login');
 });
 
 app.get('/login', (req, res) => {
@@ -37,7 +46,32 @@ app.get('/chat', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'chat.html'));
 });
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  // Join user to their groups
+  socket.on('join-groups', (userId) => {
+    socket.userId = userId;
+  });
+  
+  // Join a specific group
+  socket.on('join-group', (groupId) => {
+    socket.join(`group-${groupId}`);
+  });
+  
+  // Leave a group
+  socket.on('leave-group', (groupId) => {
+    socket.leave(`group-${groupId}`);
+  });
+  
+  socket.on('disconnect', () => {
+    // User disconnected
+  });
+});
+
+// Make io available to other modules
+app.set('io', io);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

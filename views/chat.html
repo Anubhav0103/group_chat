@@ -26,8 +26,16 @@
         <div class="chat-main">
             <div class="chat-header" id="chatHeader">
                 <div class="header-content">
-                    <h2 id="currentGroupName">Select a group to start chatting</h2>
-                    <button id="deleteGroupBtn" class="delete-group-btn" style="display: none;">Delete Group</button>
+                    <div class="header-top">
+                        <div class="user-info">
+                            <span id="currentUserDisplay">Not logged in</span>
+                            <button id="logoutBtn" onclick="logout()" class="logout-btn">Logout</button>
+                        </div>
+                    </div>
+                    <div class="header-bottom">
+                        <h2 id="currentGroupName">Select a group to start chatting</h2>
+                        <button id="deleteGroupBtn" class="delete-group-btn" style="display: none;">Delete Group</button>
+                    </div>
                 </div>
             </div>
             
@@ -58,6 +66,7 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="js/chat.js"></script>
 </body>
 </html> 

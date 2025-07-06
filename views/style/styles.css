@@ -178,6 +178,49 @@ button:hover {
 
 .header-content {
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#currentUserDisplay {
+    font-weight: 600;
+    color: #667eea;
+    font-size: 16px;
+}
+
+.logout-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    width: auto;
+    transition: background 0.2s;
+}
+
+.logout-btn:hover {
+    background: #5a6268;
+    transform: none;
+}
+
+.header-bottom {
+    display: flex;
     justify-content: space-between;
     align-items: center;
 }

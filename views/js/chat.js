@@ -1,11 +1,14 @@
-// API Configuration
-const API_BASE_URL = 'http://54.252.209.202:5000';
+// API Configuration - Auto-detect environment
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:5000' 
+    : `http://${window.location.hostname}:5000`;
 
 // Global variables
 let currentUser = null;
 let currentUserId = null;
 let selectedGroup = null;
 let userRole = null;
+let socket = null;
 
 // Check if user is logged in
 function checkAuth() {
@@ -14,9 +17,32 @@ function checkAuth() {
     const userName = localStorage.getItem('userName');
     
     if (token && userId && userName) {
-        currentUser = userName;
-        currentUserId = userId;
-        return true;
+        // Verify the token is valid by decoding it
+        try {
+            const tokenParts = token.split('.');
+            const payload = JSON.parse(atob(tokenParts[1]));
+            
+            // Check if the stored userId matches the token payload
+            if (payload.id.toString() !== userId.toString()) {
+                console.error('User ID mismatch! Stored:', userId, 'Token:', payload.id);
+                // Clear invalid data
+                localStorage.removeItem('token');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                return false;
+            }
+            
+            currentUser = userName;
+            currentUserId = userId;
+            return true;
+        } catch (error) {
+            console.error('Error decoding token:', error);
+            // Clear invalid data
+            localStorage.removeItem('token');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            return false;
+        }
     }
     return false;
 }
@@ -24,22 +50,131 @@ function checkAuth() {
 // Redirect to login if not authenticated
 function requireAuth() {
     if (!checkAuth()) {
-        window.location.href = 'login.html';
+        window.location.href = '/login';
+    }
+}
+
+// Initialize WebSocket connection
+function initializeSocket() {
+    try {
+        socket = io();
+        
+        // Set connection timeout
+        const connectionTimeout = setTimeout(() => {
+            if (!socket.connected) {
+                console.error('WebSocket connection timeout');
+                alert('Unable to connect to server. Please refresh the page.');
+            }
+        }, 5000);
+        
+        socket.on('connect', () => {
+            clearTimeout(connectionTimeout);
+        });
+    
+    // Join user to their groups
+    socket.emit('join-groups', currentUserId);
+    
+    // Listen for new messages
+    socket.on('new-message', (data) => {
+        if (selectedGroup && data.groupId === selectedGroup.id) {
+            // Add the new message directly to the UI
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="sender">${data.senderName}</div>
+                <div class="text">${data.message}</div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    });
+    
+    // Listen for group updates
+    socket.on('group-created', (data) => {
+        if (data.userId === Number(currentUserId)) {
+            // Reload all groups to ensure consistency
+            loadGroups();
+        }
+    });
+    
+    // Listen for member updates
+    socket.on('member-added', (data) => {
+        if (selectedGroup && data.groupId === selectedGroup.id) {
+            loadMembers();
+        }
+    });
+    
+    socket.on('member-removed', (data) => {
+        if (selectedGroup && data.groupId === selectedGroup.id) {
+            loadMembers();
+        }
+    });
+    
+    socket.on('member-promoted', (data) => {
+        if (selectedGroup && data.groupId === selectedGroup.id) {
+            loadMembers();
+        }
+    });
+    
+    // Listen for group deletion
+    socket.on('group-deleted', (data) => {
+        if (selectedGroup && data.groupId === selectedGroup.id) {
+            selectedGroup = null;
+            document.getElementById('currentGroupName').textContent = 'Select a group to start chatting';
+            document.getElementById('deleteGroupBtn').style.display = 'none';
+            document.getElementById('messagesContainer').innerHTML = '';
+            document.getElementById('membersList').innerHTML = '';
+            document.getElementById('inviteSection').style.display = 'none';
+        }
+        loadGroups();
+    });
+    
+    // Handle connection events
+    socket.on('connect', () => {
+        // Re-join groups after reconnection
+        socket.emit('join-groups', currentUserId);
+        if (selectedGroup) {
+            socket.emit('join-group', selectedGroup.id);
+        }
+    });
+    
+    socket.on('disconnect', () => {
+        // Connection lost
+    });
+    
+    socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+    });
+    } catch (error) {
+        console.error('Failed to initialize WebSocket:', error);
+        alert('Failed to connect to server. Please refresh the page.');
     }
 }
 
 // Initialize chat functionality
 function initializeChat() {
+    initializeSocket();
+    displayCurrentUser();
     loadGroups();
-    setInterval(loadGroups, 2000);
-    setInterval(loadMessages, 2000);
-    setInterval(loadMembers, 2000);
     
     // Event listeners
     document.getElementById('createGroupForm').addEventListener('submit', createGroup);
     document.getElementById('messageForm').addEventListener('submit', sendMessage);
     document.getElementById('inviteForm').addEventListener('submit', inviteUser);
     document.getElementById('deleteGroupBtn').addEventListener('click', deleteGroup);
+}
+
+// Display current user information
+function displayCurrentUser() {
+    const userDisplay = document.getElementById('currentUserDisplay');
+    if (currentUser) {
+        userDisplay.textContent = `Logged in as: ${currentUser}`;
+    } else {
+        userDisplay.textContent = 'Not logged in';
+    }
 }
 
 async function loadGroups() {
@@ -59,6 +194,12 @@ async function loadGroups() {
             // Auto-select first group if none selected
             if (!selectedGroup && groups.length > 0) {
                 selectGroup(groups[0]);
+                // Ensure members are loaded for auto-selected group with longer delay for WebSocket
+                setTimeout(() => {
+                    if (selectedGroup) {
+                        loadMembers();
+                    }
+                }, 500);
             }
         } else {
             console.error('Groups data is not an array:', groups);
@@ -72,7 +213,12 @@ function displayGroups(groups) {
     const groupsList = document.getElementById('groupsList');
     groupsList.innerHTML = '';
     
-    groups.forEach(group => {
+    // Remove duplicates based on group ID
+    const uniqueGroups = groups.filter((group, index, self) => 
+        index === self.findIndex(g => g.id === group.id)
+    );
+    
+    uniqueGroups.forEach(group => {
         const groupItem = document.createElement('div');
         groupItem.className = 'group-item';
         if (selectedGroup && selectedGroup.id === group.id) {
@@ -85,8 +231,19 @@ function displayGroups(groups) {
 }
 
 function selectGroup(group, event) {
+    // Leave previous group room if any
+    if (selectedGroup && socket) {
+        socket.emit('leave-group', selectedGroup.id);
+    }
+    
     selectedGroup = group;
     document.getElementById('currentGroupName').textContent = group.name;
+    
+    // Join new group room
+    if (socket) {
+        socket.emit('join-group', group.id);
+    }
+    
     loadMessages();
     loadMembers();
     
@@ -109,10 +266,12 @@ async function createGroup(e) {
     if (!groupName.trim()) return;
     
     try {
+        const requestBody = { name: groupName, userId: Number(currentUserId) };
+        
         const response = await fetch(`${API_BASE_URL}/api/groups`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: groupName, userId: Number(currentUserId) })
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
@@ -125,7 +284,7 @@ async function createGroup(e) {
         const data = await response.json();
         document.getElementById('groupName').value = '';
         alert('Group created successfully!');
-        loadGroups();
+        // Don't reload groups here - WebSocket will handle it
     } catch (error) {
         console.error('Error creating group:', error);
         alert('An error occurred while creating the group');
@@ -191,7 +350,7 @@ async function sendMessage(e) {
         
         if (response.ok) {
             messageInput.value = '';
-            loadMessages();
+            // Don't reload messages here - WebSocket will handle it
         } else {
             const data = await response.json();
             alert(data.message || 'Failed to send message');
@@ -207,6 +366,12 @@ async function loadMembers() {
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/groups/members?groupId=${selectedGroup.id}`);
+        
+        if (!response.ok) {
+            console.error('Failed to load members:', response.status, response.statusText);
+            return;
+        }
+        
         const members = await response.json();
         
         if (Array.isArray(members)) {
@@ -226,6 +391,8 @@ async function loadMembers() {
             
             // Update delete button visibility
             updateDeleteButtonVisibility();
+        } else {
+            console.error('Members data is not an array:', members);
         }
     } catch (error) {
         console.error('Error loading members:', error);
@@ -294,7 +461,7 @@ async function inviteUser(e) {
         if (response.ok) {
             document.getElementById('inviteEmail').value = '';
             alert('User invited successfully!');
-            loadMembers();
+            // Don't reload members here - WebSocket will handle it
         } else {
             alert(data.message || 'Failed to invite user');
         }
@@ -319,7 +486,7 @@ async function promoteMember(userId) {
         });
         
         if (response.ok) {
-            loadMembers();
+            // Don't reload members here - WebSocket will handle it
         } else {
             const data = await response.json();
             alert(data.message || 'Failed to promote member');
@@ -347,7 +514,7 @@ async function removeMember(userId) {
         });
         
         if (response.ok) {
-            loadMembers();
+            // Don't reload members here - WebSocket will handle it
         } else {
             const data = await response.json();
             alert(data.message || 'Failed to remove member');
@@ -396,7 +563,7 @@ async function deleteGroup() {
             document.getElementById('messagesContainer').innerHTML = '';
             document.getElementById('membersList').innerHTML = '';
             document.getElementById('inviteSection').style.display = 'none';
-            loadGroups(); // Refresh groups list
+            // Don't reload groups here - WebSocket will handle it
         } else {
             alert(data.message || 'Failed to delete group');
         }
@@ -408,10 +575,13 @@ async function deleteGroup() {
 
 // Logout functionality
 function logout() {
+    if (socket) {
+        socket.disconnect();
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
-    window.location.href = 'login.html';
+    window.location.href = '/login';
 }
 
 // Initialize when page loads

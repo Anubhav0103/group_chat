@@ -1,5 +1,7 @@
-// API Configuration
-const API_BASE_URL = 'http://54.252.209.202:5000';
+// API Configuration - Auto-detect environment
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:5000' 
+    : `http://${window.location.hostname}:5000`;
 
 // Signup functionality
 document.getElementById('signupForm').addEventListener('submit', async (e) => {
@@ -23,7 +25,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
         
         if (response.ok) {
             alert('User registered successfully! Please login.');
-            window.location.href = 'login.html';
+            window.location.href = '/login';
         } else {
             alert(data.message || 'Signup failed');
         }
