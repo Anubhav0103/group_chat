@@ -84,8 +84,10 @@ function initializeSocket() {
             `;
             messagesContainer.appendChild(messageDiv);
             
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Scroll to bottom with a small delay to ensure DOM is updated
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 10);
         }
     });
     
@@ -129,22 +131,49 @@ function initializeSocket() {
         loadGroups();
     });
     
+    // Listen for file uploads
+    socket.on('file_uploaded', (data) => {
+        if (selectedGroup && data.file.group_id === selectedGroup.id) {
+            addFileToChat(data.file);
+        }
+    });
+    
+    // Listen for file deletions
+    socket.on('file_deleted', (data) => {
+        if (selectedGroup && data.groupId === selectedGroup.id) {
+            loadMessagesAndFiles(selectedGroup.id);
+        }
+    });
+    
     // Handle connection events
     socket.on('connect', () => {
         // Re-join groups after reconnection
         socket.emit('join-groups', currentUserId);
         if (selectedGroup) {
-            socket.emit('join-group', selectedGroup.id);
+            socket.emit('join_group', { groupId: selectedGroup.id });
         }
     });
     
-    socket.on('disconnect', () => {
-        // Connection lost
+    socket.on('disconnect', (reason) => {
+        console.error('WebSocket disconnected:', reason);
     });
     
     socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
+        console.error('WebSocket connection error:', error);
     });
+    
+    // Test WebSocket connection
+    socket.on('test_response', (data) => {
+        // Test response received
+    });
+    
+    // Send test message after connection
+    setTimeout(() => {
+        if (socket.connected) {
+            socket.emit('test_message', { message: 'Hello from client!' });
+        }
+    }, 1000);
+    
     } catch (error) {
         console.error('Failed to initialize WebSocket:', error);
         alert('Failed to connect to server. Please refresh the page.');
@@ -162,6 +191,10 @@ function initializeChat() {
     document.getElementById('messageForm').addEventListener('submit', sendMessage);
     document.getElementById('inviteForm').addEventListener('submit', inviteUser);
     document.getElementById('deleteGroupBtn').addEventListener('click', deleteGroup);
+    
+    // File upload event listeners
+    document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+    document.getElementById('removeFile').addEventListener('click', removeSelectedFile);
 }
 
 // Display current user information
@@ -238,10 +271,10 @@ function selectGroup(group, event) {
     
     // Join new group room
     if (socket) {
-        socket.emit('join-group', group.id);
+        socket.emit('join_group', { groupId: group.id });
     }
     
-    loadMessages();
+    loadMessagesAndFiles(); // Load messages and files together
     loadMembers();
     
     // Update active state in UI
@@ -288,37 +321,94 @@ async function createGroup(e) {
     }
 }
 
-async function loadMessages() {
+async function loadMessagesAndFiles() {
     if (!selectedGroup) return;
     
     try {
-        const response = await fetch(`/api/messages?groupId=${selectedGroup.id}&userId=${currentUserId}`);
-        const messages = await response.json();
+        // Load messages and files in parallel
+        const [messagesResponse, filesResponse] = await Promise.all([
+            fetch(`/api/messages?groupId=${selectedGroup.id}&userId=${currentUserId}`),
+            fetch(`/api/files/group/${selectedGroup.id}`)
+        ]);
         
+        const messages = await messagesResponse.json();
+        const filesData = await filesResponse.json();
+        
+        // Combine messages and files into a single timeline
+        const timeline = [];
+        
+        // Add messages to timeline
         if (Array.isArray(messages)) {
-            displayMessages(messages);
+            messages.forEach(message => {
+                timeline.push({
+                    type: 'message',
+                    data: message,
+                    timestamp: new Date(message.created_at)
+                });
+            });
         }
+        
+        // Add files to timeline
+        if (filesData.files && Array.isArray(filesData.files)) {
+            filesData.files.forEach(file => {
+                timeline.push({
+                    type: 'file',
+                    data: file,
+                    timestamp: new Date(file.created_at)
+                });
+            });
+        }
+        
+        // Sort timeline by timestamp
+        timeline.sort((a, b) => a.timestamp - b.timestamp);
+        
+        // Display the unified timeline
+        displayTimeline(timeline);
+        
     } catch (error) {
-        console.error('Error loading messages:', error);
+        console.error('Error loading messages and files:', error);
     }
 }
 
-function displayMessages(messages) {
+function displayTimeline(timeline) {
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.innerHTML = '';
     
-    messages.forEach(message => {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message';
-        messageDiv.innerHTML = `
-            <div class="sender">${message.senderName}</div>
-            <div class="text">${message.message}</div>
-        `;
-        messagesContainer.appendChild(messageDiv);
+    timeline.forEach(item => {
+        if (item.type === 'message') {
+            // Display message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="sender">${item.data.senderName}</div>
+                <div class="text">${item.data.message}</div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+        } else if (item.type === 'file') {
+            // Check if current user is the uploader
+            const isUploader = item.data.uploaded_by === Number(currentUserId);
+            
+            // Display file
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="sender">${item.data.uploaded_by_name}</div>
+                <div class="text">
+                    <div class="file-message">
+                        <span class="file-icon">📎</span>
+                        <span class="file-name">${item.data.original_name}</span>
+                        ${!isUploader ? `<button class="download-btn" onclick="downloadFile(${item.data.id})">Download</button>` : ''}
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+        }
     });
     
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // Scroll to bottom with a small delay to ensure DOM is updated
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 10);
 }
 
 async function sendMessage(e) {
@@ -332,29 +422,45 @@ async function sendMessage(e) {
     const messageInput = document.getElementById('messageInput');
     const message = messageInput.value.trim();
     
-    if (!message) return;
+    // Check if there's either a message or a file to send
+    if (!message && !selectedFile) {
+        return; // Nothing to send
+    }
     
-    try {
-        const response = await fetch(`/api/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: Number(currentUserId),
-                message: message,
-                groupId: selectedGroup.id
-            })
-        });
-        
-        if (response.ok) {
-            messageInput.value = '';
-            // Don't reload messages here - WebSocket will handle it
-        } else {
-            const data = await response.json();
-            alert(data.message || 'Failed to send message');
+    // If there's a file selected, upload it first
+    if (selectedFile) {
+        const uploadSuccess = await uploadFile();
+        if (!uploadSuccess) {
+            return; // Upload failed, don't clear the file
         }
-    } catch (error) {
-        console.error('Error sending message:', error);
-        alert('An error occurred while sending the message');
+        // File uploaded successfully, clear it now
+        removeSelectedFile();
+    }
+    
+    // Send text message if there is one
+    if (message) {
+        try {
+            const response = await fetch(`/api/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: Number(currentUserId),
+                    message: message,
+                    groupId: selectedGroup.id
+                })
+            });
+            
+            if (response.ok) {
+                messageInput.value = '';
+                // Don't reload messages here - WebSocket will handle it
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Failed to send message');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            alert('An error occurred while sending the message');
+        }
     }
 }
 
@@ -579,6 +685,123 @@ function logout() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     window.location.href = '/login';
+}
+
+// File upload functions
+let selectedFile = null;
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        // Check file size (100MB limit)
+        if (file.size > 100 * 1024 * 1024) {
+            alert('File size must be less than 100MB');
+            event.target.value = '';
+            return;
+        }
+        
+        selectedFile = file;
+        showFilePreview(file);
+    }
+}
+
+function showFilePreview(file) {
+    const filePreview = document.getElementById('filePreview');
+    const fileName = document.getElementById('fileName');
+    
+    fileName.textContent = file.name;
+    filePreview.style.display = 'block';
+}
+
+function removeSelectedFile() {
+    selectedFile = null;
+    document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('fileInput').value = '';
+}
+
+async function uploadFile() {
+    if (!selectedFile || !selectedGroup) {
+        return false;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('groupId', selectedGroup.id);
+    formData.append('userId', currentUserId);
+    formData.append('userName', currentUser);
+
+    try {
+        const response = await fetch('/api/files/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            return true;
+        } else {
+            alert('File upload failed: ' + result.message);
+            return false;
+        }
+    } catch (error) {
+        alert('File upload failed: ' + error.message);
+        return false;
+    }
+}
+
+function downloadFile(fileId) {
+    fetch(`/api/files/download/${fileId}`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ''; // Let the browser determine filename
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    })
+    .catch(error => {
+        alert('Download failed: ' + error.message);
+    });
+}
+
+// Helper function to add file to chat
+function addFileToChat(file) {
+    const messagesContainer = document.getElementById('messagesContainer');
+    
+    // Check if current user is the uploader
+    const isUploader = file.uploaded_by === Number(currentUserId);
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message';
+    messageDiv.innerHTML = `
+        <div class="sender">${file.uploaded_by_name}</div>
+        <div class="text">
+            <div class="file-message">
+                <span class="file-icon">📎</span>
+                <span class="file-name">${file.original_name}</span>
+                ${!isUploader ? `<button class="download-btn" onclick="downloadFile(${file.id})">Download</button>` : ''}
+            </div>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    
+    // Scroll to bottom with a small delay to ensure DOM is updated
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 10);
 }
 
 // Initialize when page loads

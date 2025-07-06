@@ -1,153 +1,178 @@
 const { createGroup, addGroupMember, getUserGroups, getGroupMembers, getUserRoleInGroup, promoteMemberToAdmin, removeGroupMember, deleteGroup } = require('../models/groupModel');
 
-const createGroupController = (req, res) => {
-  const { name, userId } = req.body;
-  
-  if (!name || !userId) {
-    return res.status(400).json({ message: 'name and userId are required' });
-  }
-  
-  createGroup(name, userId, (err, result) => {
-    if (err) {
-      console.error('Error creating group:', err);
-      return res.status(500).json({ message: 'Server error' });
+const createGroupController = async (req, res) => {
+  try {
+    const { name, userId } = req.body;
+    
+    if (!name || !userId) {
+      return res.status(400).json({ message: 'name and userId are required' });
     }
     
+    const result = await createGroup(name, userId);
     const groupId = result.insertId;
     
     // Add creator as admin
-    addGroupMember(groupId, userId, 'admin', (err2) => {
-      if (err2) {
-        console.error('Error adding group member:', err2);
-        return res.status(500).json({ message: 'Server error' });
-      }
-      
-      // Emit group created event to the user
-      const io = req.app.get('io');
-      if (io) {
-        io.emit('group-created', { groupId, name, userId });
-      }
-      
-      res.status(201).json({ message: 'Group created', groupId });
-    });
-  });
-};
-
-const addGroupMemberController = (req, res) => {
-  const { groupId, userId, requesterId } = req.body;
-  if (!groupId || !userId || !requesterId) {
-    return res.status(400).json({ message: 'groupId, userId, and requesterId are required' });
-  }
-  // Only allow if requester is admin
-  getUserRoleInGroup(groupId, requesterId, (err, role) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    if (role !== 'admin') return res.status(403).json({ message: 'Only admins can add members' });
-    addGroupMember(groupId, userId, 'member', (err2) => {
-      if (err2) return res.status(500).json({ message: 'Server error' });
-      
-      // Emit member added event to all group members
-      const io = req.app.get('io');
-      if (io) {
-        io.to(`group-${groupId}`).emit('member-added', { groupId, userId });
-      }
-      
-      res.status(201).json({ message: 'User added to group' });
-    });
-  });
-};
-
-const getUserGroupsController = (req, res) => {
-  const { userId } = req.query;
-  if (!userId) {
-    return res.status(400).json({ message: 'userId is required' });
-  }
-  getUserGroups(userId, (err, results) => {
-    if (err) {
-      console.error('Error in getUserGroupsController:', err);
-      return res.status(500).json({ message: 'Server error', error: err.message });
+    await addGroupMember(groupId, userId, 'admin');
+    
+    // Emit group created event to the user
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('group-created', { groupId, name, userId });
     }
+    
+    res.status(201).json({ message: 'Group created', groupId });
+  } catch (error) {
+    console.error('Error creating group:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const addGroupMemberController = async (req, res) => {
+  try {
+    const { groupId, userId, requesterId } = req.body;
+    if (!groupId || !userId || !requesterId) {
+      return res.status(400).json({ message: 'groupId, userId, and requesterId are required' });
+    }
+    
+    // Only allow if requester is admin
+    const role = await getUserRoleInGroup(groupId, requesterId);
+    if (role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can add members' });
+    }
+    
+    // Check if user is already a member of the group
+    const existingMembers = await getGroupMembers(groupId);
+    if (existingMembers.some(member => member.id === userId)) {
+      return res.status(400).json({ message: 'User is already a member of this group' });
+    }
+    
+    await addGroupMember(groupId, userId, 'member');
+    
+    // Emit member added event to all group members
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`group_${groupId}`).emit('member-added', { groupId, userId });
+    }
+    
+    res.status(201).json({ message: 'User added to group' });
+  } catch (error) {
+    console.error('Error adding group member:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const getUserGroupsController = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+    
+    const results = await getUserGroups(userId);
     res.status(200).json(results);
-  });
+  } catch (error) {
+    console.error('Error in getUserGroupsController:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 };
 
-const getGroupMembersController = (req, res) => {
-  const { groupId } = req.query;
-  if (!groupId) {
-    return res.status(400).json({ message: 'groupId is required' });
-  }
-  getGroupMembers(groupId, (err, results) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
+const getGroupMembersController = async (req, res) => {
+  try {
+    const { groupId } = req.query;
+    if (!groupId) {
+      return res.status(400).json({ message: 'groupId is required' });
+    }
+    
+    const results = await getGroupMembers(groupId);
     res.status(200).json(results);
-  });
+  } catch (error) {
+    console.error('Error getting group members:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
-const promoteMemberToAdminController = (req, res) => {
-  const { groupId, userId, requesterId } = req.body;
-  if (!groupId || !userId || !requesterId) {
-    return res.status(400).json({ message: 'groupId, userId, and requesterId are required' });
+const promoteMemberToAdminController = async (req, res) => {
+  try {
+    const { groupId, userId, requesterId } = req.body;
+    if (!groupId || !userId || !requesterId) {
+      return res.status(400).json({ message: 'groupId, userId, and requesterId are required' });
+    }
+    
+    // Only allow if requester is admin
+    const role = await getUserRoleInGroup(groupId, requesterId);
+    if (role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can promote members' });
+    }
+    
+    await promoteMemberToAdmin(groupId, userId);
+    
+    // Emit member promoted event to all group members
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`group_${groupId}`).emit('member-promoted', { groupId, userId });
+    }
+    
+    res.status(200).json({ message: 'User promoted to admin' });
+  } catch (error) {
+    console.error('Error promoting member:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  // Only allow if requester is admin
-  getUserRoleInGroup(groupId, requesterId, (err, role) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    if (role !== 'admin') return res.status(403).json({ message: 'Only admins can promote members' });
-    promoteMemberToAdmin(groupId, userId, (err2) => {
-      if (err2) return res.status(500).json({ message: 'Server error' });
-      
-      // Emit member promoted event to all group members
-      const io = req.app.get('io');
-      if (io) {
-        io.to(`group-${groupId}`).emit('member-promoted', { groupId, userId });
-      }
-      
-      res.status(200).json({ message: 'User promoted to admin' });
-    });
-  });
 };
 
-const removeGroupMemberController = (req, res) => {
-  const { groupId, userId, requesterId } = req.body;
-  if (!groupId || !userId || !requesterId) {
-    return res.status(400).json({ message: 'groupId, userId, and requesterId are required' });
+const removeGroupMemberController = async (req, res) => {
+  try {
+    const { groupId, userId, requesterId } = req.body;
+    if (!groupId || !userId || !requesterId) {
+      return res.status(400).json({ message: 'groupId, userId, and requesterId are required' });
+    }
+    
+    // Only allow if requester is admin
+    const role = await getUserRoleInGroup(groupId, requesterId);
+    if (role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can remove members' });
+    }
+    
+    await removeGroupMember(groupId, userId);
+    
+    // Emit member removed event to all group members
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`group_${groupId}`).emit('member-removed', { groupId, userId });
+    }
+    
+    res.status(200).json({ message: 'User removed from group' });
+  } catch (error) {
+    console.error('Error removing group member:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  // Only allow if requester is admin
-  getUserRoleInGroup(groupId, requesterId, (err, role) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    if (role !== 'admin') return res.status(403).json({ message: 'Only admins can remove members' });
-    removeGroupMember(groupId, userId, (err2) => {
-      if (err2) return res.status(500).json({ message: 'Server error' });
-      
-      // Emit member removed event to all group members
-      const io = req.app.get('io');
-      if (io) {
-        io.to(`group-${groupId}`).emit('member-removed', { groupId, userId });
-      }
-      
-      res.status(200).json({ message: 'User removed from group' });
-    });
-  });
 };
 
-const deleteGroupController = (req, res) => {
-  const { groupId, requesterId } = req.body;
-  if (!groupId || !requesterId) {
-    return res.status(400).json({ message: 'groupId and requesterId are required' });
+const deleteGroupController = async (req, res) => {
+  try {
+    const { groupId, requesterId } = req.body;
+    if (!groupId || !requesterId) {
+      return res.status(400).json({ message: 'groupId and requesterId are required' });
+    }
+    
+    // Only allow if requester is admin
+    const role = await getUserRoleInGroup(groupId, requesterId);
+    if (role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can delete groups' });
+    }
+    
+    await deleteGroup(groupId);
+    
+    // Emit group deleted event to all group members
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`group_${groupId}`).emit('group-deleted', { groupId });
+    }
+    
+    res.status(200).json({ message: 'Group deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting group:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  // Only allow if requester is admin
-  getUserRoleInGroup(groupId, requesterId, (err, role) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    if (role !== 'admin') return res.status(403).json({ message: 'Only admins can delete groups' });
-    deleteGroup(groupId, (err2) => {
-      if (err2) return res.status(500).json({ message: 'Server error' });
-      
-      // Emit group deleted event to all group members
-      const io = req.app.get('io');
-      if (io) {
-        io.to(`group-${groupId}`).emit('group-deleted', { groupId });
-      }
-      
-      res.status(200).json({ message: 'Group deleted successfully' });
-    });
-  });
 };
 
 module.exports = {

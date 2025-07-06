@@ -1,0 +1,31 @@
+const express = require('express');
+const multer = require('multer');
+const FileController = require('../controllers/fileController');
+
+const router = express.Router();
+
+// Configure multer for memory storage (for S3 upload)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 100 * 1024 * 1024, // 100MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        // Accept all file types
+        cb(null, true);
+    }
+});
+
+// Upload file
+router.post('/upload', upload.single('file'), FileController.uploadFile);
+
+// Get files by group
+router.get('/group/:groupId', FileController.getGroupFiles);
+
+// Download file
+router.get('/download/:fileId', FileController.downloadFile);
+
+// Delete file
+router.delete('/:fileId', FileController.deleteFile);
+
+module.exports = router; 
