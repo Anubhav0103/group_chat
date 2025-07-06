@@ -14,6 +14,25 @@ const storeMessage = (req, res) => {
     }
     addMessage(userId, groupId, message, (err2) => {
       if (err2) return res.status(500).json({ message: 'Server error' });
+      
+      // Emit new message to all users in the group
+      const io = req.app.get('io');
+      if (io) {
+        // Get user name for the message
+        const { findUserById } = require('../models/userModel');
+        findUserById(userId, (err, user) => {
+          if (!err && user) {
+            io.to(`group-${groupId}`).emit('new-message', {
+              groupId: groupId,
+              message: message,
+              userId: userId,
+              senderName: user.name,
+              timestamp: new Date()
+            });
+          }
+        });
+      }
+      
       res.status(201).json({ message: 'Message stored successfully' });
     });
   });

@@ -22,4 +22,8 @@ const getOnlineUsers = (callback) => {
   );
 };
 
-module.exports = { findUserByEmail, createUser, getOnlineUsers }; 
+const findUserById = (userId, callback) => {
+  db.query('SELECT * FROM users WHERE id = ?', [userId], callback);
+};
+
+module.exports = { findUserByEmail, createUser, getOnlineUsers, findUserById }; 
