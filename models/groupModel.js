@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 const createGroup = (name, createdBy, callback) => {
   db.query(
-    'INSERT INTO groups (name, created_by) VALUES (?, ?)',
+    'INSERT INTO `groups` (name, created_by) VALUES (?, ?)',
     [name, createdBy],
     callback
   );
@@ -18,8 +18,8 @@ const addGroupMember = (groupId, userId, role = 'member', callback) => {
 
 const getUserGroups = (userId, callback) => {
   db.query(
-    `SELECT groups.id, groups.name FROM groups
-     JOIN group_members ON groups.id = group_members.group_id
+    `SELECT \`groups\`.id, \`groups\`.name FROM \`groups\`
+     JOIN group_members ON \`groups\`.id = group_members.group_id
      WHERE group_members.user_id = ?`,
     [userId],
     callback
@@ -74,7 +74,7 @@ const deleteGroup = (groupId, callback) => {
       if (err2) return callback(err2);
       
       // Finally delete the group itself
-      db.query('DELETE FROM groups WHERE id = ?', [groupId], callback);
+      db.query('DELETE FROM `groups` WHERE id = ?', [groupId], callback);
     });
   });
 };

@@ -45,6 +45,12 @@ function initializeChat() {
 async function loadGroups() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/groups/my?userId=${currentUserId}`);
+        
+        if (!response.ok) {
+            console.error('Failed to load groups:', response.status, response.statusText);
+            return;
+        }
+        
         const groups = await response.json();
         
         if (Array.isArray(groups)) {
@@ -54,6 +60,8 @@ async function loadGroups() {
             if (!selectedGroup && groups.length > 0) {
                 selectGroup(groups[0]);
             }
+        } else {
+            console.error('Groups data is not an array:', groups);
         }
     } catch (error) {
         console.error('Error loading groups:', error);
@@ -107,14 +115,17 @@ async function createGroup(e) {
             body: JSON.stringify({ name: groupName, userId: Number(currentUserId) })
         });
         
-        const data = await response.json();
-        
-        if (response.ok) {
-            document.getElementById('groupName').value = '';
-            loadGroups();
-        } else {
-            alert(data.message || 'Failed to create group');
+        if (!response.ok) {
+            const data = await response.json();
+            console.error('Failed to create group:', response.status, data);
+            alert(data.message || `Failed to create group (${response.status})`);
+            return;
         }
+        
+        const data = await response.json();
+        document.getElementById('groupName').value = '';
+        alert('Group created successfully!');
+        loadGroups();
     } catch (error) {
         console.error('Error creating group:', error);
         alert('An error occurred while creating the group');
