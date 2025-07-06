@@ -1,7 +1,4 @@
-// API Configuration - Auto-detect environment
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:5000' 
-    : `http://${window.location.hostname}:5000`;
+// No API_BASE_URL needed - using relative URLs
 
 // Global variables
 let currentUser = null;
@@ -179,7 +176,7 @@ function displayCurrentUser() {
 
 async function loadGroups() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/groups/my?userId=${currentUserId}`);
+        const response = await fetch(`/api/groups/my?userId=${currentUserId}`);
         
         if (!response.ok) {
             console.error('Failed to load groups:', response.status, response.statusText);
@@ -268,7 +265,7 @@ async function createGroup(e) {
     try {
         const requestBody = { name: groupName, userId: Number(currentUserId) };
         
-        const response = await fetch(`${API_BASE_URL}/api/groups`, {
+        const response = await fetch(`/api/groups`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -295,7 +292,7 @@ async function loadMessages() {
     if (!selectedGroup) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/messages?groupId=${selectedGroup.id}&userId=${currentUserId}`);
+        const response = await fetch(`/api/messages?groupId=${selectedGroup.id}&userId=${currentUserId}`);
         const messages = await response.json();
         
         if (Array.isArray(messages)) {
@@ -338,7 +335,7 @@ async function sendMessage(e) {
     if (!message) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/messages`, {
+        const response = await fetch(`/api/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -365,7 +362,7 @@ async function loadMembers() {
     if (!selectedGroup) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/groups/members?groupId=${selectedGroup.id}`);
+        const response = await fetch(`/api/groups/members?groupId=${selectedGroup.id}`);
         
         if (!response.ok) {
             console.error('Failed to load members:', response.status, response.statusText);
@@ -437,7 +434,7 @@ async function inviteUser(e) {
     
     try {
         // First find user by email
-        const userResponse = await fetch(`${API_BASE_URL}/api/users/by-email?email=${encodeURIComponent(email)}`);
+        const userResponse = await fetch(`/api/users/by-email?email=${encodeURIComponent(email)}`);
         const user = await userResponse.json();
         
         if (!user || !user.id) {
@@ -446,7 +443,7 @@ async function inviteUser(e) {
         }
         
         // Add user to group
-        const response = await fetch(`${API_BASE_URL}/api/groups/add-member`, {
+        const response = await fetch(`/api/groups/add-member`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -475,7 +472,7 @@ async function promoteMember(userId) {
     if (!selectedGroup || userRole !== 'admin') return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/groups/promote-admin`, {
+        const response = await fetch(`/api/groups/promote-admin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -503,7 +500,7 @@ async function removeMember(userId) {
     if (!confirm('Are you sure you want to remove this member?')) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/groups/remove-member`, {
+        const response = await fetch(`/api/groups/remove-member`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -544,7 +541,7 @@ async function deleteGroup() {
     }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/groups`, {
+        const response = await fetch(`/api/groups`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

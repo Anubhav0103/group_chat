@@ -1,7 +1,4 @@
-// API Configuration - Auto-detect environment
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:5000' 
-    : `http://${window.location.hostname}:5000`;
+// No API_BASE_URL needed - using relative URLs
 
 // Signup functionality
 document.getElementById('signupForm').addEventListener('submit', async (e) => {
@@ -15,7 +12,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     };
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/signup`, {
+        const response = await fetch(`/api/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
