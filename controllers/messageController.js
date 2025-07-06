@@ -1,79 +1,76 @@
 const { addMessage, getAllMessages, getMessagesAfter } = require('../models/messageModel');
 const { getGroupMembers } = require('../models/groupModel');
+const { findUserById } = require('../models/userModel');
 
-const storeMessage = (req, res) => {
-  const { userId, groupId, message } = req.body;
-  if (!userId || !groupId || !message) {
-    return res.status(400).json({ message: 'userId, groupId, and message are required' });
-  }
-  // Check if user is a member of the group
-  getGroupMembers(groupId, (err, members) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
+const storeMessage = async (req, res) => {
+  try {
+    const { userId, groupId, message } = req.body;
+    
+    if (!userId || !groupId || !message) {
+      return res.status(400).json({ message: 'userId, groupId, and message are required' });
+    }
+    
+    // Check if user is a member of the group
+    const members = await getGroupMembers(groupId);
+    
     if (!members.some(m => m.id === userId)) {
       return res.status(403).json({ message: 'Not a group member' });
     }
-    addMessage(userId, groupId, message, (err2) => {
-      if (err2) return res.status(500).json({ message: 'Server error' });
-      
-      // Emit new message to all users in the group
-      const io = req.app.get('io');
-      if (io) {
-        // Get user name for the message
-        const { findUserById } = require('../models/userModel');
-        findUserById(userId, (err, user) => {
-          if (!err && user) {
-            io.to(`group-${groupId}`).emit('new-message', {
-              groupId: groupId,
-              message: message,
-              userId: userId,
-              senderName: user.name,
-              timestamp: new Date()
-            });
-          }
+    
+    const result = await addMessage(userId, groupId, message);
+    
+    // Emit new message to all users in the group
+    const io = req.app.get('io');
+    if (io) {
+      // Get user name for the message
+      const userResults = await findUserById(userId);
+      if (userResults && userResults.length > 0) {
+        const user = userResults[0];
+        io.to(`group_${groupId}`).emit('new-message', {
+          groupId: groupId,
+          message: message,
+          userId: userId,
+          senderName: user.name,
+          timestamp: new Date()
         });
       }
-      
-      res.status(201).json({ message: 'Message stored successfully' });
-    });
-  });
+    }
+    
+    res.status(201).json({ message: 'Message stored successfully' });
+  } catch (error) {
+    console.error('Error storing message:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
-const getAllMessagesController = (req, res) => {
-  const { after, groupId } = req.query;
-  if (!groupId) return res.status(400).json({ message: 'groupId is required' });
-  // Only allow group members to fetch messages
-  const userId = req.query.userId ? Number(req.query.userId) : null;
-  if (userId) {
-    getGroupMembers(groupId, (err, members) => {
-      if (err) return res.status(500).json({ message: 'Server error' });
+const getAllMessagesController = async (req, res) => {
+  try {
+    const { after, groupId } = req.query;
+    
+    if (!groupId) {
+      return res.status(400).json({ message: 'groupId is required' });
+    }
+    
+    // Only allow group members to fetch messages
+    const userId = req.query.userId ? Number(req.query.userId) : null;
+    if (userId) {
+      const members = await getGroupMembers(groupId);
       if (!members.some(m => m.id === userId)) {
         return res.status(403).json({ message: 'Not a group member' });
       }
-      if (after) {
-        getMessagesAfter(groupId, after, (err2, results) => {
-          if (err2) return res.status(500).json({ message: 'Server error' });
-          res.status(200).json(results);
-        });
-      } else {
-        getAllMessages(groupId, (err2, results) => {
-          if (err2) return res.status(500).json({ message: 'Server error' });
-          res.status(200).json(results);
-        });
-      }
-    });
-  } else {
-    // If no userId, just fetch messages (for admin/testing)
-    if (after) {
-      getMessagesAfter(groupId, after, (err2, results) => {
-        if (err2) return res.status(500).json({ message: 'Server error' });
-        res.status(200).json(results);
-      });
-    } else {
-      getAllMessages(groupId, (err2, results) => {
-        if (err2) return res.status(500).json({ message: 'Server error' });
-        res.status(200).json(results);
-      });
     }
+    
+    let results;
+    if (after) {
+      results = await getMessagesAfter(groupId, after);
+    } else {
+      results = await getAllMessages(groupId);
+    }
+    
+    res.status(200).json(results);
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

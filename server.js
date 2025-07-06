@@ -24,10 +24,12 @@ const authRoutes = require('./routes/authRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const userRoutes = require('./routes/userRoutes');
 const groupRoutes = require('./routes/groupRoutes');
+const fileRoutes = require('./routes/fileRoutes');
 app.use('/api', authRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', userRoutes);
 app.use('/api', groupRoutes);
+app.use('/api/files', fileRoutes);
 
 // Serve the main pages
 app.get('/', (req, res) => {
@@ -54,13 +56,27 @@ io.on('connection', (socket) => {
   });
   
   // Join a specific group
-  socket.on('join-group', (groupId) => {
-    socket.join(`group-${groupId}`);
+  socket.on('join_group', (data) => {
+    const { groupId } = data;
+    socket.join(`group_${groupId}`);
+    socket.userId = socket.userId || 'unknown';
+    
+    // Get all sockets in the room
+    const sockets = io.sockets.adapter.rooms.get(`group_${groupId}`);
+    if (sockets) {
+        const socketIds = Array.from(sockets);
+        const roomSockets = socketIds.map(id => io.sockets.sockets.get(id)).filter(Boolean);
+    }
   });
   
   // Leave a group
   socket.on('leave-group', (groupId) => {
-    socket.leave(`group-${groupId}`);
+    socket.leave(`group_${groupId}`);
+  });
+  
+  // Test WebSocket connection
+  socket.on('test_message', (data) => {
+    socket.emit('test_response', { message: 'Server received your test message!', data });
   });
   
   socket.on('disconnect', () => {
@@ -68,10 +84,22 @@ io.on('connection', (socket) => {
   });
 });
 
+// Setup file cleanup job (run every hour)
+const FileController = require('./controllers/fileController');
+setInterval(() => {
+  FileController.cleanupExpiredFiles();
+}, 60 * 60 * 1000); // 1 hour
+
 // Make io available to other modules
 app.set('io', io);
 
 const PORT = process.env.PORT || 5000;
+
+// Environment variables check (only show if there are issues)
+if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.S3_BUCKET_NAME) {
+    console.error('Missing required AWS environment variables');
+}
+
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
