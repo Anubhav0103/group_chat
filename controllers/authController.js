@@ -16,7 +16,7 @@ const signup = async (req, res) => {
     
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
-    console.error('Signup error:', error);
+    // Only keep essential error handling
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -36,7 +36,6 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid password' });
     }
     
-    // Create JWT with user id and name
     const token = jwt.sign(
       { id: user.id, name: user.name }, 
       process.env.JWT_SECRET || 'your-secret-key', 
@@ -45,11 +44,10 @@ const login = async (req, res) => {
     
     res.status(200).json({ 
       message: 'Login successful', 
-      token, 
-      user: { id: user.id, name: user.name } 
+      token
     });
   } catch (error) {
-    console.error('Login error:', error);
+    // Only keep essential error handling
     res.status(500).json({ message: 'Server error' });
   }
 };

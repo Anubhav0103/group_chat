@@ -16,7 +16,6 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from views directory
 app.use(express.static(path.join(__dirname, 'views')));
 
 // Import routes
@@ -26,12 +25,12 @@ const userRoutes = require('./routes/userRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const fileRoutes = require('./routes/fileRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-app.use('/api', authRoutes);
-app.use('/api', messageRoutes);
-app.use('/api', userRoutes);
-app.use('/api', groupRoutes);
-app.use('/api/files', fileRoutes);
-app.use('/api/admin', adminRoutes);
+app.use(authRoutes);
+app.use(messageRoutes);
+app.use(userRoutes);
+app.use(groupRoutes);
+app.use(fileRoutes);
+app.use(adminRoutes);
 
 // Serve the main pages
 app.get('/', (req, res) => {
@@ -62,13 +61,7 @@ io.on('connection', (socket) => {
     const { groupId } = data;
     socket.join(`group_${groupId}`);
     socket.userId = socket.userId || 'unknown';
-    
-    // Get all sockets in the room
-    const sockets = io.sockets.adapter.rooms.get(`group_${groupId}`);
-    if (sockets) {
-        const socketIds = Array.from(sockets);
-        const roomSockets = socketIds.map(id => io.sockets.sockets.get(id)).filter(Boolean);
-    }
+
   });
   
   // Leave a group

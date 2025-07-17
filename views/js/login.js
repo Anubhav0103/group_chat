@@ -1,5 +1,3 @@
-// No API_BASE_URL needed - using relative URLs
-
 // Login functionality
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -19,20 +17,13 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            // Decode JWT to get user info
-            const tokenParts = data.token.split('.');
-            const payload = JSON.parse(atob(tokenParts[1]));
-            
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('userId', payload.id);
-            localStorage.setItem('userName', payload.name);
-            
+            const token = data.token;
+            localStorage.setItem('token', token);
             window.location.href = '/chat';
         } else {
             alert(data.message || 'Login failed');
         }
     } catch (error) {
-        console.error('Login error:', error);
         alert('An error occurred during login');
     }
 }); 

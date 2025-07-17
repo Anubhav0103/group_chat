@@ -17,15 +17,15 @@ const upload = multer({
 });
 
 // Upload file
-router.post('/upload', upload.single('file'), FileController.uploadFile);
+router.post('/api/files/upload', upload.single('file'), FileController.uploadFile);
 
 // Get files by group
-router.get('/group/:groupId', FileController.getGroupFiles);
+router.get('/api/files/group/:groupId', FileController.getGroupFiles);
 
 // Download file
-router.get('/download/:fileId', FileController.downloadFile);
+router.get('/api/files/download/:fileId', FileController.downloadFile);
 
 // Delete file
-router.delete('/:fileId', FileController.deleteFile);
+router.delete('/api/files/:fileId', FileController.deleteFile);
 
 module.exports = router; 

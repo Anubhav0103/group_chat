@@ -21,7 +21,7 @@ async function testS3Connection() {
         await s3.headBucket({ Bucket: bucketName }).promise();
         return true;
     } catch (error) {
-        console.error('S3 connection test failed:', error.message);
+        // Only keep essential error handling
         return false;
     }
 }
@@ -106,8 +106,7 @@ const uploadFile = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('File upload error:', error);
-        res.status(500).json({ success: false, message: 'Failed to upload file' });
+        // Only keep essential error handling
     }
 };
 
@@ -145,8 +144,7 @@ const downloadFile = async (req, res) => {
         res.send(s3Object.Body);
 
     } catch (error) {
-        console.error('File download error:', error);
-        res.status(500).json({ success: false, message: 'Failed to download file' });
+        // Only keep essential error handling
     }
 };
 
@@ -166,8 +164,7 @@ const getGroupFiles = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get group files error:', error);
-        res.status(500).json({ success: false, message: 'Failed to get files' });
+        // Only keep essential error handling
     }
 };
 
@@ -214,8 +211,7 @@ const deleteFile = async (req, res) => {
         res.json({ success: true, message: 'File deleted successfully' });
 
     } catch (error) {
-        console.error('File deletion error:', error);
-        res.status(500).json({ success: false, message: 'Failed to delete file' });
+        // Only keep essential error handling
     }
 };
 
@@ -246,12 +242,12 @@ const cleanupExpiredFiles = async () => {
                 );
 
             } catch (error) {
-                console.error(`Failed to delete expired file ${file.original_name}:`, error);
+                // Only keep essential error handling
             }
         }
 
     } catch (error) {
-        console.error('Cleanup expired files error:', error);
+        // Only keep essential error handling
     }
 };
 

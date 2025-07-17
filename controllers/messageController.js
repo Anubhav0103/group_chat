@@ -38,7 +38,7 @@ const storeMessage = async (req, res) => {
     
     res.status(201).json({ message: 'Message stored successfully' });
   } catch (error) {
-    console.error('Error storing message:', error);
+    // Only keep essential error handling
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -69,7 +69,7 @@ const getAllMessagesController = async (req, res) => {
     
     res.status(200).json(results);
   } catch (error) {
-    console.error('Error getting messages:', error);
+    // Only keep essential error handling
     res.status(500).json({ message: 'Server error' });
   }
 };

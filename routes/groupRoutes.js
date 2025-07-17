@@ -10,12 +10,12 @@ const {
   deleteGroupController
 } = require('../controllers/groupController');
 
-router.post('/groups', createGroupController);
-router.post('/groups/add-member', addGroupMemberController);
-router.get('/groups/my', getUserGroupsController);
-router.get('/groups/members', getGroupMembersController);
-router.post('/groups/promote-admin', promoteMemberToAdminController);
-router.post('/groups/remove-member', removeGroupMemberController);
-router.delete('/groups', deleteGroupController);
+router.post('/api/groups', createGroupController);
+router.post('/api/groups/add-member', addGroupMemberController);
+router.get('/api/groups/my', getUserGroupsController);
+router.get('/api/groups/members', getGroupMembersController);
+router.post('/api/groups/promote-admin', promoteMemberToAdminController);
+router.post('/api/groups/remove-member', removeGroupMemberController);
+router.delete('/api/groups', deleteGroupController);
 
 module.exports = router; 

@@ -1,6 +1,3 @@
-// No API_BASE_URL needed - using relative URLs
-
-// Signup functionality
 document.getElementById('signupForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     

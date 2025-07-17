@@ -1,50 +1,27 @@
-// No API_BASE_URL needed - using relative URLs
-
-// Global variables
 let currentUser = null;
 let currentUserId = null;
 let selectedGroup = null;
 let userRole = null;
 let socket = null;
 
-// Check if user is logged in
+
 function checkAuth() {
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    const userName = localStorage.getItem('userName');
-    
-    if (token && userId && userName) {
-        // Verify the token is valid by decoding it
+    if (token) {
         try {
-            const tokenParts = token.split('.');
-            const payload = JSON.parse(atob(tokenParts[1]));
-            
-            // Check if the stored userId matches the token payload
-            if (payload.id.toString() !== userId.toString()) {
-                console.error('User ID mismatch! Stored:', userId, 'Token:', payload.id);
-                // Clear invalid data
-                localStorage.removeItem('token');
-                localStorage.removeItem('userId');
-                localStorage.removeItem('userName');
-                return false;
-            }
-            
-            currentUser = userName;
-            currentUserId = userId;
+            const payload = jwt_decode(token);
+            currentUser = payload.name;
+            currentUserId = payload.id;
             return true;
         } catch (error) {
-            console.error('Error decoding token:', error);
-            // Clear invalid data
             localStorage.removeItem('token');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userName');
             return false;
         }
     }
     return false;
 }
 
-// Redirect to login if not authenticated
+
 function requireAuth() {
     if (!checkAuth()) {
         window.location.href = '/login';
@@ -59,7 +36,6 @@ function initializeSocket() {
         // Set connection timeout
         const connectionTimeout = setTimeout(() => {
             if (!socket.connected) {
-                console.error('WebSocket connection timeout');
                 alert('Unable to connect to server. Please refresh the page.');
             }
         }, 5000);
@@ -155,27 +131,12 @@ function initializeSocket() {
     });
     
     socket.on('disconnect', (reason) => {
-        console.error('WebSocket disconnected:', reason);
     });
     
     socket.on('connect_error', (error) => {
-        console.error('WebSocket connection error:', error);
     });
-    
-    // Test WebSocket connection
-    socket.on('test_response', (data) => {
-        // Test response received
-    });
-    
-    // Send test message after connection
-    setTimeout(() => {
-        if (socket.connected) {
-            socket.emit('test_message', { message: 'Hello from client!' });
-        }
-    }, 1000);
     
     } catch (error) {
-        console.error('Failed to initialize WebSocket:', error);
         alert('Failed to connect to server. Please refresh the page.');
     }
 }
@@ -212,7 +173,6 @@ async function loadGroups() {
         const response = await fetch(`/api/groups/my?userId=${currentUserId}`);
         
         if (!response.ok) {
-            console.error('Failed to load groups:', response.status, response.statusText);
             return;
         }
         
@@ -231,11 +191,8 @@ async function loadGroups() {
                     }
                 }, 500);
             }
-        } else {
-            console.error('Groups data is not an array:', groups);
         }
     } catch (error) {
-        console.error('Error loading groups:', error);
     }
 }
 
@@ -306,7 +263,6 @@ async function createGroup(e) {
         
         if (!response.ok) {
             const data = await response.json();
-            console.error('Failed to create group:', response.status, data);
             alert(data.message || `Failed to create group (${response.status})`);
             return;
         }
@@ -316,7 +272,6 @@ async function createGroup(e) {
         alert('Group created successfully!');
         // Don't reload groups here - WebSocket will handle it
     } catch (error) {
-        console.error('Error creating group:', error);
         alert('An error occurred while creating the group');
     }
 }
@@ -366,7 +321,6 @@ async function loadMessagesAndFiles() {
         displayTimeline(timeline);
         
     } catch (error) {
-        console.error('Error loading messages and files:', error);
     }
 }
 
@@ -458,7 +412,6 @@ async function sendMessage(e) {
                 alert(data.message || 'Failed to send message');
             }
         } catch (error) {
-            console.error('Error sending message:', error);
             alert('An error occurred while sending the message');
         }
     }
@@ -471,7 +424,6 @@ async function loadMembers() {
         const response = await fetch(`/api/groups/members?groupId=${selectedGroup.id}`);
         
         if (!response.ok) {
-            console.error('Failed to load members:', response.status, response.statusText);
             return;
         }
         
@@ -494,11 +446,8 @@ async function loadMembers() {
             
             // Update delete button visibility
             updateDeleteButtonVisibility();
-        } else {
-            console.error('Members data is not an array:', members);
         }
     } catch (error) {
-        console.error('Error loading members:', error);
     }
 }
 
@@ -569,7 +518,6 @@ async function inviteUser(e) {
             alert(data.message || 'Failed to invite user');
         }
     } catch (error) {
-        console.error('Error inviting user:', error);
         alert('An error occurred while inviting the user');
     }
 }
@@ -595,7 +543,6 @@ async function promoteMember(userId) {
             alert(data.message || 'Failed to promote member');
         }
     } catch (error) {
-        console.error('Error promoting member:', error);
         alert('An error occurred while promoting the member');
     }
 }
@@ -623,7 +570,6 @@ async function removeMember(userId) {
             alert(data.message || 'Failed to remove member');
         }
     } catch (error) {
-        console.error('Error removing member:', error);
         alert('An error occurred while removing the member');
     }
 }
@@ -671,7 +617,6 @@ async function deleteGroup() {
             alert(data.message || 'Failed to delete group');
         }
     } catch (error) {
-        console.error('Error deleting group:', error);
         alert('An error occurred while deleting the group');
     }
 }
@@ -682,8 +627,6 @@ function logout() {
         socket.disconnect();
     }
     localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
     window.location.href = '/login';
 }
 

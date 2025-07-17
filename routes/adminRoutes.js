@@ -4,7 +4,7 @@ const CronService = require('../services/cronService');
 const ArchiveService = require('../services/archiveService');
 
 // Manual trigger for archiving (for testing/admin use)
-router.post('/archive-messages', async (req, res) => {
+router.post('/api/admin/archive-messages', async (req, res) => {
     try {
         const result = await CronService.runArchivingNow();
         res.json({ 
@@ -13,7 +13,6 @@ router.post('/archive-messages', async (req, res) => {
             result 
         });
     } catch (error) {
-        console.error('Manual archiving failed:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Archiving failed',
@@ -23,7 +22,7 @@ router.post('/archive-messages', async (req, res) => {
 });
 
 // Get archived message count for a group
-router.get('/archived-count/:groupId', async (req, res) => {
+router.get('/api/admin/archived-count/:groupId', async (req, res) => {
     try {
         const { groupId } = req.params;
         const messageCount = await ArchiveService.getArchivedMessageCount(groupId);

@@ -7,7 +7,6 @@ class CronService {
         cron.schedule('0 2 * * *', async () => {
             try {
                 const result = await ArchiveService.archiveOldMessages();
-                console.log('Scheduled archiving completed:', result);
             } catch (error) {
                 console.error('Scheduled archiving job failed:', error);
             }
@@ -15,8 +14,6 @@ class CronService {
             scheduled: true,
             timezone: "UTC"
         });
-        
-        console.log('Cron jobs initialized - Message archiving scheduled for 2:00 AM daily');
     }
     
     // Manual trigger for testing

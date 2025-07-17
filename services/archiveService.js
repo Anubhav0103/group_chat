@@ -45,7 +45,6 @@ class ArchiveService {
             };
             
         } catch (error) {
-            console.error('Error archiving messages and files:', error);
             throw error;
         }
     }
@@ -65,7 +64,6 @@ class ArchiveService {
             
             return results;
         } catch (error) {
-            console.error('Error getting archived messages:', error);
             throw error;
         }
     }
@@ -85,7 +83,6 @@ class ArchiveService {
             
             return results;
         } catch (error) {
-            console.error('Error getting archived files:', error);
             throw error;
         }
     }
@@ -100,7 +97,6 @@ class ArchiveService {
             
             return results[0].count;
         } catch (error) {
-            console.error('Error getting archived message count:', error);
             throw error;
         }
     }
@@ -115,7 +111,6 @@ class ArchiveService {
             
             return results[0].count;
         } catch (error) {
-            console.error('Error getting archived file count:', error);
             throw error;
         }
     }

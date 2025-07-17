@@ -16,7 +16,7 @@ db.getConnection()
         connection.release();
     })
     .catch(err => {
-        console.error('Database connection failed:', err);
+        // Only keep essential error handling
     });
 
 module.exports = { db }; 
