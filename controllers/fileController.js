@@ -3,10 +3,10 @@ const AWS = require('aws-sdk');
 const { db } = require('../config/db');
 
 // Configure AWS
-const region = process.env.AWS_REGION || 'us-east-1';
+const region = process.env.AWS_REGION;
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-const bucketName = process.env.S3_BUCKET_NAME || 'grp-chat-bucket';
+const bucketName = process.env.S3_BUCKET_NAME;
 
 // Configure S3
 const s3 = new AWS.S3({
