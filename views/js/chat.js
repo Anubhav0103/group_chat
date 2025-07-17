@@ -593,17 +593,11 @@ async function deleteGroup() {
     }
     
     try {
-        const response = await fetch(`/api/groups`, {
+        const response = await fetch(`/api/groups?groupId=${selectedGroup.id}&requesterId=${currentUserId}`, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                groupId: selectedGroup.id,
-                requesterId: Number(currentUserId)
-            })
+            headers: { 'Content-Type': 'application/json' }
         });
-        
         const data = await response.json();
-        
         if (response.ok) {
             alert('Group deleted successfully!');
             selectedGroup = null;
@@ -612,7 +606,6 @@ async function deleteGroup() {
             document.getElementById('messagesContainer').innerHTML = '';
             document.getElementById('membersList').innerHTML = '';
             document.getElementById('inviteSection').style.display = 'none';
-            // Don't reload groups here - WebSocket will handle it
         } else {
             alert(data.message || 'Failed to delete group');
         }
@@ -750,3 +743,6 @@ function addFileToChat(file) {
 // Initialize when page loads
 requireAuth();
 initializeChat(); 
+window.promoteMember = promoteMember;
+window.removeMember = removeMember;
+window.deleteGroup = deleteGroup; 

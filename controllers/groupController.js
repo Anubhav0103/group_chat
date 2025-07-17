@@ -149,25 +149,23 @@ const removeGroupMemberController = async (req, res) => {
 
 const deleteGroupController = async (req, res) => {
   try {
-    const { groupId, requesterId } = req.body;
+    // For DELETE, read from req.query
+    const groupId = req.method === 'DELETE' ? req.query.groupId : req.body.groupId;
+    const requesterId = req.method === 'DELETE' ? req.query.requesterId : req.body.requesterId;
     if (!groupId || !requesterId) {
       return res.status(400).json({ message: 'groupId and requesterId are required' });
     }
-    
     // Only allow if requester is admin
     const role = await getUserRoleInGroup(groupId, requesterId);
     if (role !== 'admin') {
       return res.status(403).json({ message: 'Only admins can delete groups' });
     }
-    
     await deleteGroup(groupId);
-    
     // Emit group deleted event to all group members
     const io = req.app.get('io');
     if (io) {
       io.to(`group_${groupId}`).emit('group-deleted', { groupId });
     }
-    
     res.status(200).json({ message: 'Group deleted successfully' });
   } catch (error) {
     console.error('Error deleting group:', error);
